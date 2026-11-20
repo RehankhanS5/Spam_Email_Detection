@@ -1,4 +1,3 @@
-# Spam_Email_Detection
 # MailGuard AI – Spam Email Detection
 
 MailGuard AI is a machine learning-based web application designed to identify spam emails and distinguish them from legitimate messages. It also provides email address validation, analysis history, and a dashboard to monitor email checks.
