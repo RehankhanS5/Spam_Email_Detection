@@ -1,0 +1,383 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MailGuard AI | Spam Detection</title>
+
+    <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}?v=6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body data-analysis-mode="{% if address_result %}address{% else %}message{% endif %}"></body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+
+        <div class="logo">
+            <div class="logo-icon">M</div>
+            <span>MailGuard<span class="logo-ai"> AI</span></span>
+        </div>
+
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="#analyzer">Email Analyzer</a>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="#about">About</a>
+        </div>
+
+        <div class="nav-status">
+            <span class="status-dot"></span>
+            AI System Active
+        </div>
+
+    </nav>
+
+    <main>
+
+        <!-- Hero Section -->
+        <section class="hero">
+
+            <div class="hero-badge">
+                <span>✦</span> AI POWERED EMAIL SECURITY
+            </div>
+
+            <h1>
+                Protect Your Inbox.<br>
+                <span>Detect Spam Instantly.</span>
+            </h1>
+
+            <p class="hero-description">
+                Check suspicious email addresses and analyze email
+                messages using Machine Learning.
+            </p>
+
+        </section>
+
+        <!-- Email Analyzer -->
+        <section class="analyzer-card" id="analyzer">
+
+            <div class="card-heading">
+
+                <div class="heading-icon">✉</div>
+
+                <div>
+                    <h2>Email Security Analyzer</h2>
+                    <p>Choose what you want to check.</p>
+                </div>
+
+            </div>
+
+            <!-- Analysis Mode Selection -->
+            <div class="analysis-tabs">
+
+                <button type="button"
+                    class="analysis-tab active"
+                    id="addressTab"
+                    onclick="switchMode('address')">
+                    ✉ Email Address
+                </button>
+
+                <button type="button"
+                    class="analysis-tab"
+                    id="messageTab"
+                    onclick="switchMode('message')">
+                    📝 Email Message
+                </button>
+
+            </div>
+
+            <!-- Email Address Form -->
+            <div id="addressMode">
+
+                <form method="POST"
+                    action="{{ url_for('home') }}"
+                    id="addressForm">
+
+                    <input type="hidden"
+                        name="analysis_type"
+                        value="address">
+
+                    <label for="sender_email">SENDER EMAIL ADDRESS</label>
+
+                    <input
+                        type="email"
+                        id="sender_email"
+                        name="sender_email"
+                        placeholder="example@gmail.com"
+                        maxlength="254"
+                        required>
+
+                    <div class="input-footer">
+                        <span>Enter the sender's email address</span>
+                    </div>
+
+                    <div class="button-group">
+
+                        <button type="submit" class="analyze-btn">
+                            Check Email Address <span>→</span>
+                        </button>
+
+                        <button type="reset" class="clear-btn">
+                            Clear
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+            <!-- Email Message Form -->
+            <div id="messageMode" hidden>
+
+                <form method="POST"
+                    action="{{ url_for('home') }}"
+                    id="messageForm">
+
+                    <input type="hidden"
+                        name="analysis_type"
+                        value="message">
+
+                    <label for="email">EMAIL MESSAGE</label>
+
+                    <textarea
+                        id="email"
+                        name="email"
+                        placeholder="Paste your complete email message here..."
+                        maxlength="20000"
+                        required>{{ email_text }}</textarea>
+
+                    <div class="input-footer">
+                        <span>Enter the complete email message</span>
+                        <span id="charCount">0 characters</span>
+                    </div>
+
+                    <div class="button-group">
+
+                        <button type="submit" class="analyze-btn">
+                            Analyze Email Message <span>→</span>
+                        </button>
+
+                        <button type="button"
+                            class="clear-btn"
+                            id="clearBtn">
+                            Clear
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+            <!-- Input Error -->
+            {% if error %}
+
+            <div class="result-card error">
+
+                <div class="result-icon">⚠</div>
+
+                <div class="result-content">
+                    <span class="result-label">INPUT ERROR</span>
+                    <h3>Unable to Analyze</h3>
+                    <p>{{ error }}</p>
+                </div>
+
+            </div>
+
+            {% endif %}
+
+            <!-- Message Prediction Result -->
+            {% if prediction %}
+
+            <div class="result-card
+                {% if prediction == 'SPAM' %}
+                    spam-result
+                {% else %}
+                    ham-result
+                {% endif %}">
+
+                <div class="result-icon">
+                    {% if prediction == 'SPAM' %}
+                        ⚠
+                    {% else %}
+                        ✓
+                    {% endif %}
+                </div>
+
+                <div class="result-content">
+
+                    <span class="result-label">MESSAGE ANALYSIS RESULT</span>
+
+                    {% if prediction == 'SPAM' %}
+
+                        <h3>Spam Email Detected</h3>
+
+                        <p>
+                            This message was classified as spam
+                            by our Machine Learning model.
+                        </p>
+
+                    {% else %}
+
+                        <h3>Legitimate Email Detected</h3>
+
+                        <p>
+                            This message was classified as legitimate
+                            by our Machine Learning model.
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+                <span class="result-tag">{{ prediction }}</span>
+
+            </div>
+
+            {% endif %}
+
+            <!-- Address Analysis Result -->
+            {% if address_result %}
+
+            <div class="result-card
+                {% if address_result.status == 'INVALID' %}
+                    spam-result
+                {% else %}
+                    ham-result
+                {% endif %}">
+
+                <div class="result-icon">
+                    {% if address_result.status == 'INVALID' %}
+                        ⚠
+                    {% else %}
+                        ✓
+                    {% endif %}
+                </div>
+
+                <div class="result-content">
+
+                    <span class="result-label">ADDRESS CHECK RESULT</span>
+
+                    <h3>{{ address_result.title }}</h3>
+
+                    <p>{{ address_result.message }}</p>
+
+                </div>
+
+                <span class="result-tag">
+                    {{ address_result.status }}
+                </span>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+        <!-- Features -->
+        <section class="features" id="about">
+
+            <div class="feature">
+                <div class="feature-icon">✉</div>
+                <h3>Email Address Check</h3>
+                <p>Validate sender email addresses and inspect domain information.</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🧠</div>
+                <h3>Machine Learning</h3>
+                <p>Use a trained Linear SVM model to classify email messages.</p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🛡️</div>
+                <h3>Email Security</h3>
+                <p>Identify potentially suspicious messages and address signals.</p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+
+        <p>© 2026 MailGuard AI | Spam Email Detection System</p>
+
+        <p>Built with Python, Flask, SQLite & Machine Learning</p>
+
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+
+        const emailInput = document.getElementById("email");
+        const charCount = document.getElementById("charCount");
+        const clearBtn = document.getElementById("clearBtn");
+
+        const addressTab = document.getElementById("addressTab");
+        const messageTab = document.getElementById("messageTab");
+
+        const addressMode = document.getElementById("addressMode");
+        const messageMode = document.getElementById("messageMode");
+
+        function switchMode(mode) {
+
+            const showAddress = mode === "address";
+
+            addressMode.hidden = !showAddress;
+            messageMode.hidden = showAddress;
+
+            addressTab.classList.toggle("active", showAddress);
+            messageTab.classList.toggle("active", !showAddress);
+
+            document.getElementById("sender_email").required = showAddress;
+            emailInput.required = !showAddress;
+
+        }
+
+        // Character counter
+        function updateCharacterCount() {
+
+            charCount.textContent =
+                emailInput.value.length + " characters";
+
+        }
+
+        emailInput.addEventListener("input", updateCharacterCount);
+
+        // Clear message
+        clearBtn.addEventListener("click", function () {
+
+            emailInput.value = "";
+            updateCharacterCount();
+            emailInput.focus();
+
+        });
+
+        // Initial setup
+        updateCharacterCount();
+
+        // Initial setup
+updateCharacterCount();
+
+// Display the relevant tab after form submission
+const analysisMode = document.body.dataset.analysisMode;
+
+switchMode(analysisMode);
+
+    </script>
+
+</body>
+</html>

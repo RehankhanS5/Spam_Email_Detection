@@ -1,0 +1,545 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MailGuard AI | Dashboard</title>
+
+    <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}?v=8">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            margin-top: 20px;
+        }
+
+        .analysis-filters {
+            min-width: 140px;
+        }
+
+        .address-valid-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #e6f8ed;
+            color: #16834a;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .address-invalid-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #ffe8e8;
+            color: #dc3636;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .address-unverified-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #fff3d9;
+            color: #a66a00;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #f0edff;
+            color: #6945d3;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            margin-bottom: 25px;
+        }
+
+        .history-filters select,
+        .history-filters input {
+            min-width: 0;
+        }
+
+        @media (max-width: 700px) {
+            .chart-container {
+                height: 240px;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+            }
+
+            .history-filters {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+
+        <div class="logo">
+            <div class="logo-icon">M</div>
+            <span>MailGuard<span class="logo-ai"> AI</span></span>
+        </div>
+
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/#about">About</a>
+        </div>
+
+        <div class="nav-status">
+            <span class="status-dot"></span>
+            AI System Active
+        </div>
+
+    </nav>
+
+    <main>
+
+        <!-- Dashboard Header -->
+        <section class="dashboard-header">
+
+            <div>
+                <h1>Analytics Dashboard</h1>
+                <p>Monitor email messages and address validation activity.</p>
+            </div>
+
+            <a href="/" class="dashboard-action">
+                + Analyze New Email
+            </a>
+
+        </section>
+
+        <!-- Statistics Cards -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-icon purple">✉</div>
+                <p>Total Analyses</p>
+                <h2>{{ total_emails }}</h2>
+                <span>All checks performed</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon blue">📝</div>
+                <p>Message Checks</p>
+                <h2>{{ message_count }}</h2>
+                <span>Email messages analyzed</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon purple">＠</div>
+                <p>Address Checks</p>
+                <h2>{{ address_count }}</h2>
+                <span>Email addresses checked</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">⚠</div>
+                <p>Spam Detected</p>
+                <h2>{{ spam_count }}</h2>
+                <span>Spam messages</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">✓</div>
+                <p>Legitimate Emails</p>
+                <h2>{{ ham_count }}</h2>
+                <span>Ham messages</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon blue">%</div>
+                <p>Spam Percentage</p>
+
+                <h2>
+                    {{ "%.1f"|format(
+                        (spam_count / message_count * 100)
+                        if message_count > 0 else 0
+                    ) }}%
+                </h2>
+
+                <span>Of message checks</span>
+            </div>
+
+        </section>
+
+        <!-- Address Statistics -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-icon green">✓</div>
+                <p>Valid Addresses</p>
+                <h2>{{ valid_address_count }}</h2>
+                <span>Format and domain checks passed</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">⚠</div>
+                <p>Invalid Addresses</p>
+                <h2>{{ invalid_address_count }}</h2>
+                <span>Address validation failed</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon blue">?</div>
+                <p>Unverified Addresses</p>
+                <h2>{{ unverified_address_count }}</h2>
+                <span>Domain could not be checked</span>
+            </div>
+
+        </section>
+
+        <!-- Classification Chart -->
+        <section class="dashboard-chart">
+
+            <div class="chart-heading">
+                <h2>Email Message Classification</h2>
+                <p>Distribution of spam and legitimate messages.</p>
+            </div>
+
+            <div class="chart-container">
+
+                <canvas
+                    id="emailChart"
+                    data-spam="{{ spam_count }}"
+                    data-ham="{{ ham_count }}">
+                </canvas>
+
+            </div>
+
+        </section>
+
+        <!-- Prediction History -->
+        <section class="history-card">
+
+            <div class="history-header">
+
+                <div>
+                    <h2>Recent Analysis History</h2>
+                    <p>Your latest 100 email address and message checks.</p>
+                </div>
+
+                <form
+                    method="POST"
+                    action="/clear-history"
+                    onsubmit="return confirm('Clear all analysis history?');">
+
+                    <button type="submit" class="clear-history-btn">
+                        Clear History
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- Search and Filters -->
+            <form method="GET"
+                action="/dashboard"
+                class="history-filters">
+
+                <input
+                    type="text"
+                    name="search"
+                    placeholder="Search email or address..."
+                    value="{{ search }}">
+
+                <!-- Result Filter -->
+                <select name="category">
+
+                    <option value="ALL"
+                        {% if category == 'ALL' %}selected{% endif %}>
+                        All Results
+                    </option>
+
+                    <option value="SPAM"
+                        {% if category == 'SPAM' %}selected{% endif %}>
+                        Spam
+                    </option>
+
+                    <option value="HAM"
+                        {% if category == 'HAM' %}selected{% endif %}>
+                        Ham
+                    </option>
+
+                    <option value="VALID"
+                        {% if category == 'VALID' %}selected{% endif %}>
+                        Valid Address
+                    </option>
+
+                    <option value="INVALID"
+                        {% if category == 'INVALID' %}selected{% endif %}>
+                        Invalid Address
+                    </option>
+
+                    <option value="UNVERIFIED"
+                        {% if category == 'UNVERIFIED' %}selected{% endif %}>
+                        Unverified Address
+                    </option>
+
+                </select>
+
+                <!-- Analysis Type Filter -->
+                <select name="analysis_type" class="analysis-filters">
+
+                    <option value="ALL"
+                        {% if analysis_type == 'ALL' %}selected{% endif %}>
+                        All Analysis
+                    </option>
+
+                    <option value="MESSAGE"
+                        {% if analysis_type == 'MESSAGE' %}selected{% endif %}>
+                        Email Messages
+                    </option>
+
+                    <option value="ADDRESS"
+                        {% if analysis_type == 'ADDRESS' %}selected{% endif %}>
+                        Email Addresses
+                    </option>
+
+                </select>
+
+                <button type="submit" class="filter-btn">
+                    Search / Filter
+                </button>
+
+                <a href="/dashboard" class="reset-btn">
+                    Reset
+                </a>
+
+                <a href="/export-history" class="export-btn">
+                    Export CSV
+                </a>
+
+            </form>
+
+            <!-- History Table -->
+            {% if history %}
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>ID</th>
+                            <th>Email / Address</th>
+                            <th>Analysis Type</th>
+                            <th>Result</th>
+                            <th>Date</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for item in history %}
+
+                        <tr>
+
+                            <!-- ID -->
+                            <td>{{ item[0] }}</td>
+
+                            <!-- Email Preview -->
+                            <td class="email-preview">
+                                {{ item[1] }}
+                            </td>
+
+                            <!-- Analysis Type -->
+                            <td>
+
+                                {% if item[4] == 'ADDRESS' %}
+
+                                    <span class="type-badge">
+                                        EMAIL ADDRESS
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="type-badge">
+                                        EMAIL MESSAGE
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- Result -->
+                            <td>
+
+                                {% if item[4] == 'ADDRESS' %}
+
+                                    {% if item[2] == 'VALID' %}
+
+                                        <span class="address-valid-badge">
+                                            VALID
+                                        </span>
+
+                                    {% elif item[2] == 'INVALID' %}
+
+                                        <span class="address-invalid-badge">
+                                            INVALID
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="address-unverified-badge">
+                                            UNVERIFIED
+                                        </span>
+
+                                    {% endif %}
+
+                                {% else %}
+
+                                    {% if item[2] == 'SPAM' %}
+
+                                        <span class="spam-badge">
+                                            SPAM
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="ham-badge">
+                                            HAM
+                                        </span>
+
+                                    {% endif %}
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- Date -->
+                            <td>{{ item[3] }}</td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-history">
+
+                <div>📭</div>
+
+                <h3>No Analysis History</h3>
+
+                <p>
+                    Analyze an email address or message to see its history here.
+                </p>
+
+                <a href="/">Start Analyzing</a>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+
+        <p>© 2026 MailGuard AI | Spam Email Detection System</p>
+
+        <p>Built with Python, Flask, SQLite & Machine Learning</p>
+
+    </footer>
+
+    <!-- Chart.js -->
+    <script>
+
+        const chartCanvas = document.getElementById("emailChart");
+
+        if (chartCanvas && typeof Chart !== "undefined") {
+
+            const spamCount = Number(chartCanvas.dataset.spam);
+            const hamCount = Number(chartCanvas.dataset.ham);
+
+            new Chart(chartCanvas, {
+
+                type: "doughnut",
+
+                data: {
+
+                    labels: [
+                        "Spam Messages",
+                        "Legitimate Messages"
+                    ],
+
+                    datasets: [{
+
+                        data: [
+                            spamCount,
+                            hamCount
+                        ],
+
+                        backgroundColor: [
+                            "#ef6262",
+                            "#36b77b"
+                        ],
+
+                        borderWidth: 0,
+                        hoverOffset: 8
+
+                    }]
+
+                },
+
+                options: {
+
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+
+                        legend: {
+                            position: "bottom"
+                        }
+
+                    }
+
+                }
+
+            });
+
+        } else {
+
+            console.error(
+                "Chart.js or emailChart canvas could not be loaded."
+            );
+
+        }
+
+    </script>
+
+</body>
+</html>
